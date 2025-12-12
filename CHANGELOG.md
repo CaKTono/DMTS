@@ -1,26 +1,23 @@
-# DMTS MK4 Changelog
+# DMTS Changelog
 
 ## Version 4.0.0 (2025-12-11)
 
-### New Feature: Combined Transcription Enhancement & MK4 Recovery
+Initial open-source release of DMTS MK4.
+
+### Features
+
+#### Intelligent Transcription Recovery
 
 DMTS MK4 introduces **intelligent transcription recovery** that uses verified combined audio to extract real speech even when hallucinations are detected.
 
----
-
-### Combined Transcription Output
-
-When contextual verification detects a potential hallucination, MK4 now attempts to **recover valid speech** from the combined transcription instead of simply discarding the sentence.
-
-#### How It Works
+**How It Works:**
 
 1. **Hallucination Detected:** Original transcription doesn't match combined audio
 2. **Extract New Portion:** Use `_extract_corrected_text` to find actual new content
 3. **Validate Extraction:** Ensure extracted text is ≥2 words (not fragments)
 4. **MK4 Recovery:** Use extracted text as the real transcription
 
-#### Example
-
+**Example:**
 ```
 [HALLUCINATION DETECTED] Original: "Thank you." (word overlap: 0.0%)
   Combined transcription: "We'll have to do another evacuation."
@@ -30,18 +27,12 @@ Speaker 0 | Sentence: We'll have to do another evacuation.
 
 ---
 
-### Speech Density Integration
+#### Speech Density Filtering
 
-Previously, the speech density filter would **discard** suspicious sentences immediately. MK4 now **flags** them for verification, allowing recovery of valid speech.
+Suspicious sentences are **flagged** for verification instead of immediate discard, allowing recovery of valid speech.
 
-| Before (MK3) | After (MK4) |
-|-------------|-------------|
-| `[HALLUCINATION FILTER] Discarded` | `[DENSITY SUSPICIOUS] flagged for MK4 verification` |
-| Sentence lost forever | Sentence goes through MK4 recovery |
+**Console Output Examples:**
 
-#### Console Output Examples
-
-**Successful MK4 Recovery:**
 ```
 [DENSITY SUSPICIOUS] "Thank you." (density: 29.9 chars/sec) - flagged for MK4 verification
 [HALLUCINATION DETECTED] Original: "Thank you." (word overlap: 0.0%)
@@ -50,20 +41,13 @@ Previously, the speech density filter would **discard** suspicious sentences imm
 Speaker 0 | Sentence: We'll have to do another evacuation.
 ```
 
-**No New Content (Noise/Silence):**
-```
-[HALLUCINATION DETECTED] Original: "Um..." (word overlap: 0.0%)
-  Combined transcription: "halo selamat malam"
-  [MK4] No new content in combined (noise/silence), discarding
-```
-
 ---
 
-### Text Correction Protocol
+#### Text Correction Protocol
 
-MK4 extends the `updates` array in `diarization_update` messages to support **text and translation corrections**, not just speaker ID changes.
+The `updates` array in `diarization_update` messages supports **text and translation corrections**, not just speaker ID changes.
 
-#### Extended Updates Array
+**Extended Updates Array:**
 
 ```json
 {
@@ -78,20 +62,20 @@ MK4 extends the `updates` array in `diarization_update` messages to support **te
         {
             "index": 3,
             "speaker_id": 0,
-            "text": "corrected text here",           // NEW in MK4
-            "translation": {"text": "corrected 翻译"}  // NEW in MK4
+            "text": "corrected text here",
+            "translation": {"text": "corrected translation"}
         }
     ]
 }
 ```
 
-Clients can now receive retroactive text corrections when combined transcription provides better accuracy.
+Clients can receive retroactive text corrections when combined transcription provides better accuracy.
 
 ---
 
-### /stream Debug Logging
+#### Debug Stream Endpoint
 
-The `/stream` endpoint now receives all transcription broadcasts for debugging:
+The `/stream` endpoint receives all transcription broadcasts for debugging:
 
 - Diarization updates (new sentences + corrections)
 - Translation updates
@@ -101,53 +85,29 @@ Connect to `/stream` to monitor all server output in real-time.
 
 ---
 
-### New CLI Arguments
+### Core Features
 
-No new CLI arguments. MK4 uses the same verification arguments as MK3:
+- **Real-time Transcription**: Live speech-to-text using Whisper models
+- **Speaker Diarization**: Identifies speakers using Coqui TTS embeddings + agglomerative clustering
+- **Multilingual Translation**: NLLB (200+ languages), Hunyuan (38 languages), or Hybrid backend
+- **ISO Language Code Support**: Use simple codes like `zh`, `ja`, `ko` instead of full NLLB codes
+- **Contextual Consistency Verification**: Detects Whisper hallucinations
+- **Heuristic-Triggered Verification**: Only verifies suspicious sentences to reduce latency
+- **Translation Consistency Check**: Prevents "jumpy" real-time translations
+
+---
+
+### CLI Arguments
 
 | Argument | Default | Description |
 |----------|---------|-------------|
 | `--enable_verification` | `True` | Enable contextual verification + MK4 recovery |
 | `--verification_model_path` | `...` | Path to verification Whisper model |
 | `--verification_word_overlap_threshold` | `0.3` | Minimum word overlap for passing |
+| `--translation_backend` | `nllb` | Translation backend: `nllb`, `hunyuan`, or `hybrid` |
+| `--enable_diarization` | `False` | Enable speaker diarization |
+| `--enable_translation` | `False` | Enable translation layer |
 
 ---
 
-### Inherited from MK3
-
-- Contextual Consistency Verification
-- Heuristic-Triggered Verification (keywords, short sentences, first N)
-- Double-Verification for Segment 0
-- Translation Consistency Check
-- Speech Density Heuristic
-
-### Inherited from MK2
-
-- ISO language code support (zh, ja, ko, etc.)
-- Hybrid translation backend (NLLB + Hunyuan)
-- Speaker diarization
-
----
-
-## Files Changed
-
-| File | Changes |
-|------|---------|
-| `dmts_mk4.py` | Added `_extract_corrected_text`, MK4 recovery logic, `density_suspicious` flag, `stream_connections` |
-| `index_4.html` | Updated `handleDiarizationUpdate` to use text/translation from updates |
-| `run_server*.sh` | All scripts point to `dmts_mk4.py` |
-
----
-
-## Migration from MK3
-
-MK4 is fully backward compatible with MK3 clients. The extended `updates` array fields are optional - clients that don't handle them will continue to work.
-
-**To upgrade:**
-1. Replace `dmts_mk3.py` with `dmts_mk4.py`
-2. Update run scripts to reference `dmts_mk4.py`
-3. (Optional) Update client to handle `text` and `translation` in `updates` array
-
----
-
-*Created: December 11, 2025 | Version: DMTS MK4*
+*Initial Release: December 11, 2025*
