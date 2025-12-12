@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Browser STT Client (DMTS MK4 - Combined Transcription)</title>
+    <style>
+        /* ... (Your existing styles are perfect here) ... */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f4f4f9;
+            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            font-size: 16px;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            padding: 25px;
+            gap: 15px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        #status {
+            color: #0056b3;
+            font-size: 1.25rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        #transcriptionContainer,
+        #translationContainer,
+        #finalTranscriptContainer {
+            width: 100%;
+            padding: 12px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        #transcriptionContainer,
+        #translationContainer {
+            min-height: 80px;
+            max-height: 120px;
+        }
+
+        #finalTranscriptContainer {
+            min-height: 200px;
+            max-height: 40vh;
+            /* Use viewport height for better responsiveness */
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            /* Space between sentence groups */
+        }
+
+        #transcription,
+        #translation {
+            font-size: 1.125rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .sentence-group p {
+            margin: 0;
+            line-height: 1.5;
+            font-size: 1.1rem;
+        }
+
+        .speaker-prefix {
+            font-weight: 600;
+            padding-right: 8px;
+            color: var(--speaker-color, #546e7a);
+            /* This is correct */
+        }
+
+        .translation-box {
+            background-color: #e3f2fd !important;
+            border: 1px solid #90caf9 !important;
+        }
+
+        #translation {
+            color: #0d47a1;
+        }
+
+        .last-word {
+            color: #007bff;
+            font-weight: 600;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        button {
+            padding: 14px 28px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: #fff;
+            background-color: #0056b3;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            min-height: 48px;
+            min-width: 150px;
+        }
+
+        button:hover,
+        button:focus {
+            background-color: #007bff;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .language-selector {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .language-selector label {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        #language-select {
+            padding: 12px 16px;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fff;
+            color: #333;
+            min-width: 200px;
+            max-width: 100%;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            #container {
+                padding: 15px;
+                gap: 12px;
+            }
+
+            .button-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            button,
+            #language-select {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        button:focus,
+        #language-select:focus {
+            outline: 2px solid #007bff;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <!-- ... (Your existing HTML body is perfect here) ... -->
+        <div id="status">Press "Start Recording"...</div>
+
+        <div class="button-container">
+            <button id="startButton" onclick="startRecording()">Start Recording</button>
+            <button id="stopButton" onclick="stopRecording()" disabled>Stop Recording</button>
+        </div>
+
+        <div class="language-selector">
+            <label for="language-select">Translate to:</label>
+            <select name="languages" id="language-select">
+                <option value="eng_Latn">English</option>
+                <option value="zho_Hans">Chinese (Simplified)</option>
+                <option value="spa_Latn">Spanish</option>
+                <option value="fra_Latn">French</option>
+                <option value="deu_Latn">German</option>
+                <option value="ita_Latn">Italian</option>
+                <option value="por_Latn">Portuguese</option>
+                <option value="rus_Cyrl">Russian</option>
+                <option value="jpn_Jpan">Japanese</option>
+                <option value="kor_Hang">Korean</option>
+                <option value="arb_Arab">Arabic</option>
+                <option value="hin_Deva">Hindi</option>
+            </select>
+        </div>
+        <div id="transcriptionContainer">
+            <div id="transcription" class="realtime"></div>
+        </div>
+        <div id="translationContainer" class="translation-box">
+            <div id="translation" class="realtime"></div>
+        </div>
+
+        <div id="finalTranscriptContainer"></div>
+    </div>
+
+    <!-- =================== START OF CORRECTED SCRIPT =================== -->
+    <script>
+        const statusDiv = document.getElementById("status");
+        const transcriptionDiv = document.getElementById("transcription");
+        const translationDiv = document.getElementById("translation");
+        const startButton = document.getElementById("startButton");
+        const stopButton = document.getElementById("stopButton");
+        const transcriptionContainer = document.getElementById("transcriptionContainer");
+        const finalTranscriptContainer = document.getElementById("finalTranscriptContainer");
+
+        const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+        const host = window.location.hostname || "localhost";
+        // Auto-detect port from current page URL (works for 8890, 8891, etc.)
+        const port = window.location.port || "8890";
+
+        const dataURL = `${scheme}://${host}:${port}/data`;
+        const controlURL = `${scheme}://${host}:${port}/control`;
+        console.log("Data URL:", dataURL);
+        console.log("Control URL:", controlURL);
+
+        // --- NEW: Define our scalable color palette ---
+        const speakerColorPalette = [
+            '#0056b3', '#c62828', '#2e7d32', '#6a1b9a', '#d66c00',
+            '#00695c', '#AD1457', '#5D4037', '#BF360C', '#0D47A1'
+        ];
+
+        let dataSocket;
+        let controlSocket;
+        let audioContext;
+        let mediaStream;
+        let mediaProcessor;
+
+        function setLanguage(lang) {
+            if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
+                const command = { command: "set_translation_language", language: lang };
+                controlSocket.send(JSON.stringify(command));
+                console.log(`Translation language set to: ${lang}`);
+            } else {
+                console.error("Control WebSocket is not connected or not ready to send.");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('language-select').addEventListener('change', function () {
+                setLanguage(this.value);
+            });
+        });
+
+        // In the <script> tag
+        function connectToControlSocket() {
+            // This function now returns a Promise
+            return new Promise((resolve, reject) => {
+                controlSocket = new WebSocket(controlURL);
+
+                controlSocket.onopen = () => {
+                    console.log("Connected to control WebSocket.");
+                    resolve(); // The Promise succeeds when the connection is open
+                };
+
+                controlSocket.onclose = () => {
+                    console.log("Disconnected from control WebSocket.");
+                };
+
+                controlSocket.onerror = (error) => {
+                    console.error("Control WebSocket error:", error);
+                    reject(error); // The Promise fails if there's a connection error
+                };
+            });
+        }
+        function connectToDataSocket() {
+            dataSocket = new WebSocket(dataURL);
+            dataSocket.onopen = () => {
+                statusDiv.textContent = "Connected to STT server.";
+                console.log("Connected to data WebSocket.");
+            };
+
+            dataSocket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === "realtime") {
+                        updateRealtimeTranscription(message);
+                    } else if (message.type === "diarization_update") {
+                        handleDiarizationUpdate(message);
+                    }
+                } catch (e) {
+                    console.error("Error parsing message:", e);
+                }
+            };
+
+            dataSocket.onclose = () => statusDiv.textContent = "Disconnected from STT server.";
+            dataSocket.onerror = (error) => {
+                console.error("WebSocket error:", error);
+                statusDiv.textContent = "Error connecting to the STT server.";
+            };
+        }
+
+        function updateRealtimeTranscription(message) {
+            const words = message.text.split(" ");
+            const lastWord = words.pop() || "";
+            transcriptionDiv.textContent = words.join(" ") + " ";
+            const lastWordSpan = document.createElement('span');
+            lastWordSpan.className = 'last-word';
+            lastWordSpan.textContent = lastWord;
+            transcriptionDiv.appendChild(lastWordSpan);
+
+            if (message.translation) {
+                translationDiv.textContent = message.translation.text;
+            }
+            transcriptionContainer.scrollTop = transcriptionContainer.scrollHeight;
+        }
+
+        function handleDiarizationUpdate(message) {
+            transcriptionDiv.innerHTML = "";
+            translationDiv.textContent = "";
+
+            // --- 1. Process the new sentence ---
+            const newSentence = message.new_sentence;
+            if (newSentence) {
+                let sentenceGroup = document.getElementById(`sentence-${newSentence.index}`);
+                if (!sentenceGroup) {
+                    sentenceGroup = document.createElement('div');
+                    sentenceGroup.id = `sentence-${newSentence.index}`;
+                    sentenceGroup.dataset.index = newSentence.index;
+                    finalTranscriptContainer.appendChild(sentenceGroup);
+                }
+
+                // Set the class for general styling (optional)
+                sentenceGroup.className = `sentence-group`;
+
+                // **Apply the color using a CSS variable**
+                const speakerId = newSentence.speaker_id;
+                if (speakerId >= 0) {
+                    const color = speakerColorPalette[speakerId % speakerColorPalette.length];
+                    sentenceGroup.style.setProperty('--speaker-color', color);
+                } else {
+                    sentenceGroup.style.removeProperty('--speaker-color'); // Use fallback
+                }
+
+                sentenceGroup.innerHTML = generateSentenceHTML(newSentence);
+            }
+
+            // --- 2. Process corrections for past sentences (MK4: now supports text + translation) ---
+            const updates = message.updates;
+            if (updates && updates.length > 0) {
+                updates.forEach(update => {
+                    const sentenceGroupToUpdate = document.querySelector(`[data-index="${update.index}"]`);
+                    if (sentenceGroupToUpdate) {
+                        // **Apply the updated color using a CSS variable**
+                        const newSpeakerId = update.speaker_id;
+                        if (newSpeakerId >= 0) {
+                            const newColor = speakerColorPalette[newSpeakerId % speakerColorPalette.length];
+                            sentenceGroupToUpdate.style.setProperty('--speaker-color', newColor);
+                        } else {
+                            sentenceGroupToUpdate.style.removeProperty('--speaker-color');
+                        }
+
+                        // MK4: Use updated text if provided, otherwise keep existing
+                        const existingText = sentenceGroupToUpdate.querySelector('.sentence-text')?.textContent || '';
+                        const existingTranslation = sentenceGroupToUpdate.querySelector('.translation-text')?.textContent || '';
+
+                        const updatedData = {
+                            text: update.text || existingText,  // MK4: use new text if available
+                            speaker_id: update.speaker_id,
+                            translation: {
+                                text: update.translation?.text || existingTranslation  // MK4: use new translation if available
+                            }
+                        };
+
+                        // Log correction for debugging
+                        if (update.text) {
+                            console.log(`[MK4] Text correction for index ${update.index}: "${existingText}" → "${update.text}"`);
+                        }
+
+                        sentenceGroupToUpdate.innerHTML = generateSentenceHTML(updatedData);
+                    }
+                });
+            }
+
+            finalTranscriptContainer.scrollTop = finalTranscriptContainer.scrollHeight;
+        }
+
+        function generateSentenceHTML(sentenceData) {
+            const speakerId = sentenceData.speaker_id;
+            const speakerText = (speakerId === undefined || speakerId < 0) ? "Unknown" : `Speaker ${speakerId}`;
+
+            let html = `<p><span class="speaker-prefix">${speakerText}:</span> <span class="sentence-text">${sentenceData.text}</span></p>`;
+
+            if (sentenceData.translation && sentenceData.translation.text) {
+                html += `<p><span class="speaker-prefix">${speakerText} (tr):</span> <span class="translation-text">${sentenceData.translation.text}</span></p>`;
+            }
+
+            return html;
+        }
+        // In the <script> tag
+        async function startRecording() {
+            try {
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                statusDiv.textContent = "Connecting..."; // New status
+
+                finalTranscriptContainer.innerHTML = "";
+                transcriptionDiv.textContent = "";
+                translationDiv.textContent = "";
+
+                // --- START OF NEW LOGIC ---
+
+                // 1. Connect to control socket and WAIT for it to open.
+                await connectToControlSocket();
+
+                // 2. NOW that we know the socket is open, send the language command.
+                const initialLanguage = document.getElementById('language-select').value;
+                setLanguage(initialLanguage);
+
+                // 3. Connect to the data socket.
+                connectToDataSocket();
+
+                // 4. Set up the microphone and start sending audio.
+                // This only happens after the control socket is ready and configured.
+                statusDiv.textContent = "Recording...";
+                audioContext = new AudioContext();
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const input = audioContext.createMediaStreamSource(mediaStream);
+
+                mediaProcessor = audioContext.createScriptProcessor(1024, 1, 1);
+                mediaProcessor.onaudioprocess = (event) => {
+                    if (dataSocket && dataSocket.readyState === WebSocket.OPEN) {
+                        const audioData = event.inputBuffer.getChannelData(0);
+                        sendAudioChunk(audioData, audioContext.sampleRate);
+                    }
+                };
+
+                input.connect(mediaProcessor);
+                mediaProcessor.connect(audioContext.destination);
+
+                // --- END OF NEW LOGIC ---
+
+            } catch (error) {
+                console.error("Error starting recording:", error);
+                statusDiv.textContent = "Error starting recording.";
+                stopRecording();
+            }
+        }
+
+        function stopRecording() {
+            if (mediaProcessor) {
+                mediaProcessor.disconnect();
+                mediaProcessor.onaudioprocess = null;
+                mediaProcessor = null;
+            }
+            if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+            if (audioContext) audioContext.close();
+            if (dataSocket) dataSocket.close();
+            if (controlSocket) controlSocket.close();
+
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            statusDiv.textContent = "Stopped recording.";
+        }
+
+        function sendAudioChunk(audioData, sampleRate) {
+            const pcm16Data = new Int16Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+                pcm16Data[i] = Math.max(-1, Math.min(1, audioData[i])) * 0x7FFF;
+            }
+
+            const metadata = JSON.stringify({ sampleRate });
+            const metadataBuffer = new TextEncoder().encode(metadata);
+            const message = new Uint8Array(4 + metadataBuffer.byteLength + pcm16Data.byteLength);
+
+            new DataView(message.buffer).setUint32(0, metadataBuffer.byteLength, true);
+
+            message.set(metadataBuffer, 4);
+            message.set(new Uint8Array(pcm16Data.buffer), 4 + metadataBuffer.byteLength);
+
+            if (dataSocket && dataSocket.readyState === WebSocket.OPEN) {
+                dataSocket.send(message);
+            }
+        }
+    </script>
+    <!-- =================== END OF CORRECTED SCRIPT =================== -->
+</body>
+
+</html>

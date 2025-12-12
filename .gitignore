@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Model Checkpoints & Large Files
+*.pt
+*.pth
+*.bin
+*.onnx
+*.tflite
+*.safetensors
+models/
+checkpoints/
+# Allow keeping script wrappers but ignore actual model directories if needed
+# !models/download_scripts/
+
+# Audio Logs
+audio_logs/
+transcription_logs/
+*.wav
+*.mp3
+*.flac
+
+# Log files (but not config JSON)
+logs/*.json
+*_log.json
+transcript*.json
+
+# DMTS Specific
+saved_audio/
+logs/
+recording_logs/
+temp/
+tmp/
+output/
