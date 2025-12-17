@@ -26,11 +26,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # MODEL PATH CONFIGURATION - EDIT THESE PATHS
 # ============================================================
 # Set STORAGE_PATH to where you downloaded your models
-STORAGE_PATH="/path/to/your/models"
+STORAGE_PATH="./models"
 WHISPER_MODEL="${STORAGE_PATH}/faster-whisper-large-v3"
 WHISPER_MODEL_REALTIME="${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2"
 VERIFICATION_MODEL="${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2"
-DIARIZATION_MODEL="${STORAGE_PATH}/XTTS-v2/v2.0.2"
+DIARIZATION_MODEL="${STORAGE_PATH}/XTTS-v2"
 NLLB_600M="${STORAGE_PATH}/nllb-200-distilled-600M"
 NLLB_3_3B="${STORAGE_PATH}/nllb-200-3.3B"
 

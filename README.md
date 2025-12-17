@@ -49,6 +49,9 @@ conda install cudnn -y
 # Check your CUDA version with: nvidia-smi
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 
+# Install PyAudio via conda (requires portaudio system library)
+conda install -c conda-forge pyaudio -y
+
 # Install all dependencies (--no-deps bypasses version conflicts)
 pip install -r requirements.txt --no-deps
 ```
@@ -56,38 +59,47 @@ pip install -r requirements.txt --no-deps
 ### Dependency Conflicts Note
 
 This project has inherent dependency conflicts between package requirements:
-- **TTS 0.22.0** requires `numpy<1.23.0`
-- **realtimestt 0.3.104** nominally requires `scipy==1.15.2`
+- **TTS 0.22.0** requires `numpy==1.22.0`
 
-The `requirements.txt` resolves these by pinning `scipy==1.12.0` (compatible with numpy 1.22.x) and `numpy>=1.22.0,<1.23.0`. The `--no-deps` flag bypasses pip's dependency resolver to allow these pinned versions. The application works correctly despite version warnings at startup.
+The `requirements.txt` resolves these by pinning `numpy>=1.23.5`. The `--no-deps` flag bypasses pip's dependency resolver to allow these pinned versions. The application works correctly despite version warnings at startup.
 
 ### Download Models
 
-Download models using `huggingface-cli` or `git lfs`:
+**Default setup**: Models are stored in `DMTS/models` (recommended, pre-configured in all run scripts).
 
 ```bash
 # Install huggingface CLI if needed
 pip install huggingface_hub[cli]
 
-# Create models directory
+# Create models directory (from DMTS root)
 mkdir -p models && cd models
 
 # Whisper Models (required)
-huggingface-cli download Systran/faster-whisper-large-v3 --local-dir faster-whisper-large-v3
-huggingface-cli download deepdml/faster-whisper-large-v3-turbo-ct2 --local-dir faster-whisper-large-v3-turbo-ct2
+hf download Systran/faster-whisper-large-v3 --local-dir faster-whisper-large-v3
+hf download deepdml/faster-whisper-large-v3-turbo-ct2 --local-dir faster-whisper-large-v3-turbo-ct2
 
 # Diarization Model (required)
-huggingface-cli download coqui/XTTS-v2 --local-dir XTTS-v2
+hf download coqui/XTTS-v2 --local-dir XTTS-v2
 
 # Translation Models (choose based on backend)
 # For NLLB/Hybrid:
-huggingface-cli download facebook/nllb-200-distilled-600M --local-dir nllb-200-distilled-600M
-huggingface-cli download facebook/nllb-200-3.3B --local-dir nllb-200-3.3B
+hf download facebook/nllb-200-distilled-600M --local-dir nllb-200-distilled-600M
+hf download facebook/nllb-200-3.3B --local-dir nllb-200-3.3B
 
 # For Hunyuan/Hybrid:
-huggingface-cli download tencent/Hunyuan-MT-7B --local-dir Hunyuan-MT-7B
+hf download tencent/Hunyuan-MT-7B --local-dir Hunyuan-MT-7B
 
 cd ..
+```
+
+**Custom path setup**: If you prefer a different location, edit the `STORAGE_PATH` variable in the run scripts:
+
+```bash
+# Edit your preferred run script
+nano run_server_hybrid.sh
+
+# Change this line (default is /root/DMTS/models):
+STORAGE_PATH="/root/DMTS/models"  # Change to your custom path
 ```
 
 **Model Requirements by Backend:**
@@ -102,20 +114,7 @@ cd ..
 
 ### Quick Start
 
-1. **Configure model paths** - Edit the run script:
-```bash
-nano run_server_hybrid.sh
-
-# Update these variables at the top:
-STORAGE_PATH="/path/to/your/models"
-WHISPER_MODEL="${STORAGE_PATH}/faster-whisper-large-v3"
-WHISPER_MODEL_REALTIME="${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2"
-VERIFICATION_MODEL="${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2"
-DIARIZATION_MODEL="${STORAGE_PATH}/XTTS-v2/v2.0.2"
-NLLB_600M="${STORAGE_PATH}/nllb-200-distilled-600M"
-NLLB_3_3B="${STORAGE_PATH}/nllb-200-3.3B"
-HUNYUAN_MODEL="${STORAGE_PATH}/Hunyuan-MT-7B"
-```
+1. **Download models** - Ensure all models are in `DMTS/models/` (see [Download Models](#download-models) section). All run scripts are pre-configured to use this path.
 
 2. **Run the server**:
 ```bash
@@ -124,6 +123,8 @@ chmod +x run_server_hybrid.sh
 ```
 
 3. **Open the web UI**: http://localhost:8890
+
+> **Note**: The run scripts are pre-configured with `STORAGE_PATH="/root/DMTS/models"`. If you need a custom path, edit the `STORAGE_PATH` variable in your chosen run script.
 
 ### Run Scripts
 
@@ -213,10 +214,17 @@ DMTS/
 │   ├── manager_nllb.py      # NLLB-only backend
 │   ├── manager_hybrid.py    # Hybrid backend
 │   └── manager_hunyuan.py   # Hunyuan-only backend
-├── run_server*.sh           # Launch scripts
+├── run_server*.sh           # Launch scripts (pre-configured for models/ directory)
 ├── requirements.txt
 ├── LICENSE
-└── NOTICE
+├── NOTICE
+└── models/                  # Model storage directory (required)
+    ├── faster-whisper-large-v3/
+    ├── faster-whisper-large-v3-turbo-ct2/
+    ├── XTTS-v2/
+    ├── nllb-200-distilled-600M/
+    ├── nllb-200-3.3B/
+    └── Hunyuan-MT-7B/
 ```
 
 ## Acknowledgments
