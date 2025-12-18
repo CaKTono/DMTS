@@ -2,7 +2,7 @@
 
 A real-time speech-to-text server with **speaker diarization**, **multilingual translation**, and **hallucination detection**. Built on top of [RealtimeSTT](https://github.com/KoljaB/RealtimeSTT).
 
-https://github.com/user-attachments/assets/3cdaceff-f3d8-4427-9afb-4c8194b82757
+https://github.com/user-attachments/assets/2d5dfd22-d5c2-4c88-a334-324eb5ae4741
 
 ## Features
 
