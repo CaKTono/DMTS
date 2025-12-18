@@ -2,7 +2,7 @@
 
 A real-time speech-to-text server with **speaker diarization**, **multilingual translation**, and **hallucination detection**. Built on top of [RealtimeSTT](https://github.com/KoljaB/RealtimeSTT).
 
-https://github.com/CaKTono/DMTS/raw/main/dmts_demo.mp4
+https://github.com/user-attachments/assets/f027697c-5c87-43e5-a94d-c43e3f4c203b
 
 ## Features
 
