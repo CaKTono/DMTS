@@ -105,7 +105,6 @@ The server broadcasts real-time transcription updates to all connected clients.
 
 import torch
 # import numpy as np # Already imported
-import tempfile
 import os
 
 # Add with other imports at the top of the file
@@ -118,42 +117,10 @@ from aiohttp import web, WSMsgType
 import aiohttp_cors
 
 import sys
-import subprocess
-import importlib
 import logging
 from functools import partial
 
 # os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-
-# check and install package
-def check_and_install_packages(packages):
-    """
-    Checks if specified Python packages are installed, and installs them if not.
-
-    Args:
-        packages (list of dict): A list of packages to check. Each dictionary
-                                 should contain 'module_name', 'install_name',
-                                 and optionally 'attribute'.
-    """
-    for package in packages:
-        module_name = package['module_name'] 
-        attribute = package.get('attribute')
-        install_name = package['install_name']
-
-        try:
-            if attribute:
-                module = importlib.import_module(module_name)
-                getattr(module, attribute)
-            else:
-                importlib.import_module(module_name)
-        except (ImportError, AttributeError):
-            print(f"Module '{module_name}' not found. Installing '{install_name}'...")
-            try:
-                subprocess.check_call([sys.executable, "-m", "pip", "install", install_name])
-                print(f"Package '{install_name}' installed successfully.")
-            except subprocess.CalledProcessError as e:
-                print(f"FATAL: Failed to install '{install_name}'. Please install it manually using 'pip install {install_name}'. Error: {e}", file=sys.stderr)
-                sys.exit(1)
 
 from difflib import SequenceMatcher
 from collections import deque
@@ -161,7 +128,6 @@ from datetime import datetime
 import asyncio
 import pyaudio
 import base64
-import sys
 
 # --- On/Off Switches (Boolean Flags) ---
 
@@ -223,36 +189,6 @@ CHANNELS = 1
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-
-check_and_install_packages([
-    # {
-    #     'module_name': 'RealtimeSTT',                 # Import module
-    #     'attribute': 'AudioToTextRecorder',           # Specific class to check
-    #     'install_name': 'RealtimeSTT',                # Package name for pip install
-    # },
-    {
-        'module_name': 'websockets',                  # Import module
-        'install_name': 'websockets',                 # Package name for pip install
-    },
-    {
-        'module_name': 'numpy',                       # Import module
-        'install_name': 'numpy',                      # Package name for pip install
-    },
-    {
-        'module_name': 'scipy.signal',                # Submodule of scipy
-        'attribute': 'resample',                      # Specific function to check
-        'install_name': 'scipy',                      # Package name for pip install
-    },
-    {
-        'module_name': 'transformers',
-        'install_name': 'transformers[sentencepiece]'
-    },
-    {
-        'module_name': 'torch',
-        'install_name': 'torch'
-    }
-])
 
 # Define ANSI color codes for terminal output
 class bcolors:
@@ -610,12 +546,13 @@ def parse_arguments():
     global debug_logging, extended_logging, loglevel, writechunks, log_incoming_chunks, dynamic_silence_timing
 
     import argparse
+    import config
     parser = argparse.ArgumentParser(description='Start the Speech-to-Text (STT) server with various configuration options.')
 
-    parser.add_argument('-m', '--model', type=str, default='/home/zhouzhencheng/storage/ckpt/faster-whisper-large-v3',
+    parser.add_argument('-m', '--model', type=str, default=config.get_model_path("whisper"),
                         help='Path to the STT model or model size. Options include: tiny, tiny.en, base, base.en, small, small.en, medium, medium.en, large-v1, large-v2, or any huggingface CTranslate2 STT model such as deepdml/faster-whisper-large-v3-turbo-ct2. Default is large-v2.')
 
-    parser.add_argument('-r', '--rt-model', '--realtime_model_type', type=str, default='/home/zhouzhencheng/storage/ckpt/faster-whisper-large-v3',
+    parser.add_argument('-r', '--rt-model', '--realtime_model_type', type=str, default=config.get_model_path("whisper_realtime"),
                         help='Model size for real-time transcription. Options same as --model.  This is used only if real-time transcription is enabled (enable_realtime_transcription). Default is tiny.en.')
     
     parser.add_argument('-l', '--lang', '--language', type=str, default='',
@@ -771,13 +708,13 @@ def parse_arguments():
                         choices=['nllb', 'hunyuan', 'hybrid'],
                         help='Translation backend: "nllb" (fast), "hunyuan" (LLM), or "hybrid" (NLLB realtime + Hunyuan final).')
 
-    parser.add_argument('--translation_model', type=str, default='tencent/Hunyuan-MT-7B',
+    parser.add_argument('--translation_model', type=str, default=config.get_model_path("hunyuan"),
                         help='Path to Hunyuan-MT-7B model (used when --translation_backend=hunyuan).')
 
-    parser.add_argument('--translation_model_realtime', type=str, default='/home/zhouzhencheng/storage/ckpt/nllb-200-distilled-600M',
+    parser.add_argument('--translation_model_realtime', type=str, default=config.get_model_path("nllb_realtime"),
                         help='Hugging Face model for real-time translation (NLLB backend only).')
 
-    parser.add_argument('--translation_model_full', type=str, default='/home/zhouzhencheng/storage/ckpt/nllb-200-3.3B',
+    parser.add_argument('--translation_model_full', type=str, default=config.get_model_path("nllb_full"),
                         help='Hugging Face model for full-sentence translation (NLLB backend only).')
 
     parser.add_argument('--translation_load_in_8bit', action='store_true', default=False,
@@ -795,7 +732,7 @@ def parse_arguments():
     parser.add_argument('--enable_diarization', action='store_true', default=True,
                         help='Enable speaker diarization using TTS model embeddings.')
     parser.add_argument('--no-enable-diarization', dest='enable_diarization', action='store_false')
-    parser.add_argument('--diarization_model_path', type=str, required=False, default='/home/zhouzhencheng/realtime_mt/Real-time_STT/WhoSpeaks/XTTS-v2/v2.0.2',
+    parser.add_argument('--diarization_model_path', type=str, required=False, default=config.get_model_path("xtts"),
                         help='Path to the Coqui TTS model directory used for generating speaker embeddings.')
     # ...
     # local_models_path = os.environ.get("COQUI_MODEL_PATH")
@@ -815,8 +752,8 @@ def parse_arguments():
     parser.add_argument('--enable_verification', action='store_true', default=True,
                         help='Enable contextual consistency verification to detect hallucinations.')
     parser.add_argument('--no-enable-verification', dest='enable_verification', action='store_false')
-    parser.add_argument('--verification_model_path', type=str, 
-                        default='/home/zhouzhencheng/storage/ckpt/faster-whisper-large-v3-turbo-ct2',
+    parser.add_argument('--verification_model_path', type=str,
+                        default=config.get_model_path("verification"),
                         help='Path to the Whisper model for verification (e.g., large-v3-turbo).')
     parser.add_argument('--verification_compute_type', type=str, default='float16',
                         help='Compute type for verification model (float16, int8, etc.).')
@@ -1125,29 +1062,22 @@ class FullSentenceProcessorThread(threading.Thread):
         if not self.global_args.enable_diarization or self.tts_model is None or audio_buffer is None:
             return None
 
-        temp_filename = None
         try:
-            # The TTS model requires a file path, so we create a temporary WAV file
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
-                temp_filename = temp_wav.name
+            # Avoid the file-loading path in XTTS that can depend on torchcodec/ffmpeg.
+            # We already have in-memory float audio from RealtimeSTT.
+            audio_np = np.asarray(audio_buffer, dtype=np.float32)
+            if audio_np.ndim > 1:
+                audio_np = np.mean(audio_np, axis=0)
 
-            # The recorder provides audio as a float32 NumPy array.
-            # We must convert it to 16-bit integers to save it as a standard WAV file.
-            audio_int16 = (audio_buffer * 32767).astype(np.int16)
+            if audio_np.size == 0:
+                return None
 
-            # Write the audio data to the temporary file
-            with wave.open(temp_filename, 'wb') as wf:
-                wf.setnchannels(CHANNELS)
-                wf.setsampwidth(pyaudio.get_sample_size(FORMAT))
-                wf.setframerate(16000)  # The recorder's sample rate is 16kHz
-                wf.writeframes(audio_int16.tobytes())
+            audio_np = np.nan_to_num(audio_np, nan=0.0, posinf=1.0, neginf=-1.0)
+            audio_np = np.clip(audio_np, -1.0, 1.0)
 
-            # Use the TTS model to get the speaker embedding from the audio file
-            _, speaker_embedding = self.tts_model.get_conditioning_latents(
-                audio_path=temp_filename,
-                gpt_cond_len=30,
-                max_ref_length=60
-            )
+            # XTTS speaker encoder expects [channels, time] tensor and source sample rate.
+            audio_tensor = torch.from_numpy(audio_np).unsqueeze(0)
+            speaker_embedding = self.tts_model.get_speaker_embedding(audio_tensor, sr=16000)
 
             # Convert the resulting tensor to a simple NumPy array and return it
             return speaker_embedding.view(-1).cpu().detach().numpy()
@@ -1155,10 +1085,6 @@ class FullSentenceProcessorThread(threading.Thread):
         except Exception as e:
             print(f"{bcolors.FAIL}Error generating speaker embedding: {e}{bcolors.ENDC}")
             return None
-        finally:
-            # Ensure the temporary file is deleted after we're done with it
-            if temp_filename and os.path.exists(temp_filename):
-                os.remove(temp_filename)
 
     def _determine_optimal_cluster_count(self, embeddings_scaled):
         """
@@ -2554,7 +2480,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-'''
-python /home/zhouzhencheng/realtime_mt/Real-time_STT/RealtimeSTT_calvin/stt_server_mt_public_5_diarization_mk3_v3.py --diarization_model_path /home/zhouzhencheng/realtime_mt/Real-time_STT/WhoSpeaks/XTTS-v2/v2.0.2 --audio-log-dir="./saved_audio_mk3_v3" --transcription-log="transcript_mk3_v3.log"
-'''

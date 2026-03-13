@@ -22,18 +22,25 @@ echo ""
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Ensure cuDNN/CUDA libs are visible to ctranslate2/faster-whisper.
+if [ -f "${SCRIPT_DIR}/scripts/configure_cuda_libs.sh" ]; then
+    # shellcheck disable=SC1091
+    source "${SCRIPT_DIR}/scripts/configure_cuda_libs.sh"
+    configure_cuda_library_path
+fi
+
 # ============================================================
 # MODEL PATH CONFIGURATION - EDIT THESE PATHS
 # ============================================================
 # Set STORAGE_PATH to where you downloaded your models
-STORAGE_PATH="./models"
-WHISPER_MODEL="${STORAGE_PATH}/faster-whisper-large-v3"
-WHISPER_MODEL_REALTIME="${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2"
-VERIFICATION_MODEL="${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2"
-DIARIZATION_MODEL="${STORAGE_PATH}/XTTS-v2"
-NLLB_600M="${STORAGE_PATH}/nllb-200-distilled-600M"
-NLLB_3_3B="${STORAGE_PATH}/nllb-200-3.3B"
-HUNYUAN_MODEL="${STORAGE_PATH}/Hunyuan-MT-7B"
+STORAGE_PATH="${DMTS_MODELS_DIR:-./models}"
+WHISPER_MODEL="${DMTS_WHISPER_MODEL:-${STORAGE_PATH}/faster-whisper-large-v3}"
+WHISPER_MODEL_REALTIME="${DMTS_WHISPER_MODEL_REALTIME:-${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2}"
+VERIFICATION_MODEL="${DMTS_VERIFICATION_MODEL:-${STORAGE_PATH}/faster-whisper-large-v3-turbo-ct2}"
+DIARIZATION_MODEL="${DMTS_DIARIZATION_MODEL_PATH:-${STORAGE_PATH}/XTTS-v2}"
+NLLB_600M="${DMTS_NLLB_600M_MODEL:-${STORAGE_PATH}/nllb-200-distilled-600M}"
+NLLB_3_3B="${DMTS_NLLB_3_3B_MODEL:-${STORAGE_PATH}/nllb-200-3.3B}"
+HUNYUAN_MODEL="${DMTS_HUNYUAN_MODEL:-${STORAGE_PATH}/Hunyuan-MT-7B}"
 
 
 # ============================================================
@@ -43,6 +50,7 @@ PORT=8890
 DEVICE="cuda"
 COMPUTE_TYPE="float16"
 TARGET_LANGUAGE="eng_Latn"
+USE_MAIN_MODEL_FOR_REALTIME="true"
 TRANSLATION_GPU_DEVICE=0
 TRANSLATION_LOAD_8BIT="false"
 
@@ -83,6 +91,7 @@ echo -e "  Final (38 langs): Hunyuan-MT-7B"
 echo -e "  Final (fallback): NLLB-3.3B"
 echo -e "  Verification: ${ENABLE_VERIFICATION}"
 echo -e "  Port: ${PORT}"
+echo -e "  Realtime Whisper: ${USE_MAIN_MODEL_FOR_REALTIME} (reuse main model)"
 echo ""
 echo -e "${YELLOW}Starting server...${NC}"
 echo ""
@@ -96,6 +105,13 @@ fi
 VERIFICATION_ARGS=""
 if [ "$ENABLE_VERIFICATION" = "true" ]; then
     VERIFICATION_ARGS="--enable_verification --verification_model_path ${VERIFICATION_MODEL} --verification_compute_type ${VERIFICATION_COMPUTE_TYPE} --verification_word_overlap_threshold ${VERIFICATION_WORD_OVERLAP_THRESHOLD} --verification_first_n_sentences ${VERIFICATION_FIRST_N_SENTENCES} --translation_consistency_threshold ${TRANSLATION_CONSISTENCY_THRESHOLD}"
+else
+    VERIFICATION_ARGS="--no-enable-verification"
+fi
+
+REALTIME_ARGS=""
+if [ "$USE_MAIN_MODEL_FOR_REALTIME" = "true" ]; then
+    REALTIME_ARGS="--use_main_model_for_realtime"
 fi
 
 # Run the server
@@ -107,6 +123,7 @@ python dmts_mk4.py \
     --translation_target_language "${TARGET_LANGUAGE}" \
     ${TRANSLATION_ARGS} \
     ${VERIFICATION_ARGS} \
+    ${REALTIME_ARGS} \
     --model "${WHISPER_MODEL}" \
     --realtime_model_type "${WHISPER_MODEL_REALTIME}" \
     --audio-log-dir "./saved_audio" \
