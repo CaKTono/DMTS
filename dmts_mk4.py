@@ -103,19 +103,10 @@ The server exposes three WebSocket endpoints on a single port (default 8890):
 The server broadcasts real-time transcription updates to all connected clients.
 """
 
-# --- Diarization Imports (Add near other imports) ---
-# Ensure TTS library is installed: pip install TTS
-# You might need to adjust these imports based on the exact TTS version
-from TTS.tts.models import setup_model as setup_tts_model
-from TTS.config import load_config
-from TTS.tts.configs.xtts_config import XttsConfig # Might be needed for add_safe_globals
-from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs # Might be needed for add_safe_globals
-from TTS.config.shared_configs import BaseDatasetConfig # Might be needed for add_safe_globals
 import torch
 # import numpy as np # Already imported
 import tempfile
 import os
-# --- End Diarization Imports ---
 
 # Add with other imports at the top of the file
 from sklearn.cluster import AgglomerativeClustering, KMeans
@@ -771,7 +762,8 @@ def parse_arguments():
     # --- ADD TRANSLATION ARGUMENTS ---
     parser.add_argument('--enable_translation', default=True, action='store_true',
                         help='Enable the translation layer.')
-    
+    parser.add_argument('--no-enable-translation', dest='enable_translation', action='store_false')
+
     parser.add_argument('--translation_target_language', type=str, default='eng_Latn',
                         help='Target language for translation (e.g., fra_Latn for French, spa_Latn for Spanish). Uses NLLB language codes.')
     
@@ -802,7 +794,8 @@ def parse_arguments():
     # --- ADD DIARIZATION ARGUMENTS (Inside parse_arguments function) ---
     parser.add_argument('--enable_diarization', action='store_true', default=True,
                         help='Enable speaker diarization using TTS model embeddings.')
-    parser.add_argument('--diarization_model_path', type=str, required=True, default='/home/zhouzhencheng/realtime_mt/Real-time_STT/WhoSpeaks/XTTS-v2/v2.0.2',
+    parser.add_argument('--no-enable-diarization', dest='enable_diarization', action='store_false')
+    parser.add_argument('--diarization_model_path', type=str, required=False, default='/home/zhouzhencheng/realtime_mt/Real-time_STT/WhoSpeaks/XTTS-v2/v2.0.2',
                         help='Path to the Coqui TTS model directory used for generating speaker embeddings.')
     # ...
     # local_models_path = os.environ.get("COQUI_MODEL_PATH")
@@ -821,6 +814,7 @@ def parse_arguments():
     # --- MK3: CONTEXTUAL CONSISTENCY VERIFICATION ARGUMENTS ---
     parser.add_argument('--enable_verification', action='store_true', default=True,
                         help='Enable contextual consistency verification to detect hallucinations.')
+    parser.add_argument('--no-enable-verification', dest='enable_verification', action='store_false')
     parser.add_argument('--verification_model_path', type=str, 
                         default='/home/zhouzhencheng/storage/ckpt/faster-whisper-large-v3-turbo-ct2',
                         help='Path to the Whisper model for verification (e.g., large-v3-turbo).')
@@ -2229,6 +2223,13 @@ def initialize_tts_model(args):
     
     print(f"{bcolors.OKCYAN}Initializing TTS model from: {args.diarization_model_path}{bcolors.ENDC}")
     try:
+        # TTS imports stay local so ASR-only startup does not depend on XTTS/librosa.
+        from TTS.config import load_config
+        from TTS.config.shared_configs import BaseDatasetConfig
+        from TTS.tts.configs.xtts_config import XttsConfig
+        from TTS.tts.models import setup_model as setup_tts_model
+        from TTS.tts.models.xtts import XttsAudioConfig, XttsArgs
+
         device = torch.device("cpu")
         config = load_config(os.path.join(args.diarization_model_path, "config.json"))
         model = setup_tts_model(config)
