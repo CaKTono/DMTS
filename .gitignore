@@ -1,5 +1,4 @@
 # DMTS Runtime Artifacts (put first for quick review)
-docs/
 models/
 saved_audio/
 logs/
